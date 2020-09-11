@@ -111,30 +111,16 @@
       overlay : overlay
     });
 
-  button_start.canvas.addEventListener('click', function(e) {console.log('click');},false);
+var command = new ROSLIB.Message({data:""})
+
+//buttons should do
+command.data="start" //get button name or use "start", "stop", "park"
+cmd.publish(command);
+
+overlay.addEventListener('click', function(e) {cmd.publish(command); console.log("published" + command.data);},false);
 
 
-  // Publishing a Topic
-  // ------------------
-
-
-
-  // var twist = new ROSLIB.Message({
-  //   linear : {
-  //     x : 0.1,
-  //     y : 0.2,
-  //     z : 0.3
-  //   },
-  //   angular : {
-  //     x : -0.1,
-  //     y : -0.2,
-  //     z : -0.3
-  //   }
-  // });
-  // cmdVel.publish(twist);
-
-  // Subscribing to a Topic
-  // ----------------------
+// Subscribers
 
   var speed_sub = new ROSLIB.Topic({
     ros : ros,
