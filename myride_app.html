@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="style.css">
+<script src="https://unpkg.com/eventemitter2@6.4.3/lib/eventemitter2.js"></script>
+<script src="script/mjpegcanvas.js"></script>
+<script type="text/javascript" src="http://static.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
+<script>
+  /**
+   * Setup all visualization elements when the page is loaded. 
+   */
+
+  host_ip ='192.168.1.141';
+  topic_port = 8000;
+  camera_port = 8080;
+
+  width = 1080;
+  height = 720;
+
+  buttonHeight = height/10;
+  buttonWidth = width/6;
+
+  var buttonPadding = 2;
+
+
+  function addButton(text, position, context){
+    var button = new MJPEGCANVAS.Button({
+    text : text,
+    height : buttonHeight, 
+    width: buttonWidth,
+     });
+   // var buttonWidth = button.width;
+    button.redraw();
+    context.drawImage(button.canvas,  width - (buttonWidth + 2*buttonPadding), height - position* (buttonHeight + buttonPadding));
+    
+    return button;
+  }
+  
+  function init() {
+
+    // overlay
+
+    var overlay = document.createElement('canvas');
+    overlay.setAttribute("id", "overlay");
+    overlay.width = width;
+    overlay.height = height;
+    var context = overlay.getContext('2d');
+    
+
+    // HUD
+
+    var speedometer = document.createElement('div');
+    speedometer.setAttribute("id", "meter");
+    //overlay.appendChild(speedometer);
+    console.log(document.getElementsByTagName('body')[0])
+    document.getElementsByTagName('body')[0].appendChild(speedometer);
+
+    offsetLeft = 30;
+    offsetTop = 10;
+    HUDHeight = height/8;
+    speedometer.style.display = 'block';
+    speedometer.style.position = 'absolute';
+    speedometer.style.top = height - HUDHeight - offsetTop + 'px';
+    speedometer.style.left = offsetLeft + 'px';
+    speedometer.style.width = width/10 + 'px';
+    speedometer.style.height = HUDHeight + 'px';
+
+
+    // ROS data WebSocket
+    
+    var ros = new ROSLIB.Ros({
+    url : 'ws://' + host_ip + ':' + topic_port
+  });
+
+  ros.on('connection', function() {
+    console.log('Connected to websocket server.');
+  });
+
+  ros.on('error', function(error) {
+    console.log('Error connecting to websocket server: ', error);
+  });
+
+  ros.on('close', function() {
+    console.log('Connection to websocket server closed.');
+  });
+
+  // Command publisher
+  var cmd = new ROSLIB.Topic({
+    ros : ros,
+    name : '/command',
+    messageType : 'std_msgs/String'
+  });
+
+    // // BUTTONS
+    // Start
+    var button_start = addButton('Start', 1, context)
+    // Stop
+    var button_stop = addButton('Stop', 2, context)
+    // Park
+    var button_park = addButton('Park', 3, context)
+
+    // Create the main viewer.
+    var viewer = new MJPEGCANVAS.Viewer({
+      divID : 'mjpeg',
+      host : host_ip,
+      width : width,
+      height : height,
+      topic : '/zed/image_raw',
+      interval : 30,
+      overlay : overlay
+    });
+
+  button_start.canvas.addEventListener('click', function(e) {console.log('click');},false);
+
+
+  // Publishing a Topic
+  // ------------------
+
+
+
+  // var twist = new ROSLIB.Message({
+  //   linear : {
+  //     x : 0.1,
+  //     y : 0.2,
+  //     z : 0.3
+  //   },
+  //   angular : {
+  //     x : -0.1,
+  //     y : -0.2,
+  //     z : -0.3
+  //   }
+  // });
+  // cmdVel.publish(twist);
+
+  // Subscribing to a Topic
+  // ----------------------
+
+  var speed_sub = new ROSLIB.Topic({
+    ros : ros,
+    name : '/oscc/speed',
+    messageType : 'std_msgs/Float32'
+  });
+
+  speed_sub.subscribe(function(message) {
+    spd=message.data.toFixed(1)
+    console.log('Speed: ' +  spd);
+    speedometer.innerText = spd;
+    //speed_sub.unsubscribe();
+  });
+
+  var steer_sub = new ROSLIB.Topic({
+    ros : ros,
+    name : '/oscc/steering',
+    messageType : 'std_msgs/Int16'
+  });
+
+  steer_sub.subscribe(function(message) {
+    console.log('Steering Angle: ' +  message.data.toFixed());
+    //steer_sub.unsubscribe();
+  });
+
+  }
+</script>
+</head>
+
+<body onload="init()">
+
+  <div id="mjpeg"></div>
+  <!-- <div id="meter"></div> -->
+  <div id="diag"></div>
+  <!-- <div id="buttons"></div> -->
+</body>
+</html>
